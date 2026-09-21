@@ -16,6 +16,11 @@ function App() {
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
 
+  // Audit History state (MongoDB Atlas)
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historyLogs, setHistoryLogs] = useState([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
   const textareaRef = useRef(null);
   const lineNumbersRef = useRef(null);
 
@@ -263,7 +268,7 @@ async function processPayment(cart, user) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, fileName: fileName || 'untitled' }),
       });
 
       if (!response.ok) {
@@ -274,6 +279,7 @@ async function processPayment(cart, user) {
       const data = await response.json();
       setIssues(data.issues || []);
       setHasScanned(true);
+      fetchHistory(); // Refresh audit history from MongoDB
 
     } catch (error) {
       console.error('Scan error:', error);
@@ -283,6 +289,67 @@ async function processPayment(cart, user) {
       setIsLoading(false);
     }
   };
+
+  // Fetch recent audits from MongoDB Atlas
+  const fetchHistory = async () => {
+    setIsLoadingHistory(true);
+    try {
+      const res = await fetch('http://localhost:5000/api/history');
+      if (res.ok) {
+        const data = await res.json();
+        setHistoryLogs(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch history:', err);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  // Restore past audit log into editor
+  const handleLoadHistoryItem = async (id) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/history/${id}`);
+      if (res.ok) {
+        const log = await res.json();
+        setCode(log.code || '');
+        setFileName(log.fileName || 'restored.ts');
+        setIssues(log.issues || []);
+        setHasScanned(true);
+        setErrorMessage('');
+        setIsHistoryOpen(false);
+      }
+    } catch (err) {
+      console.error('Error loading history item:', err);
+    }
+  };
+
+  // Delete an audit record from MongoDB Atlas
+  const handleDeleteHistoryItem = async (id, e) => {
+    e.stopPropagation();
+    try {
+      const res = await fetch(`http://localhost:5000/api/history/${id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setHistoryLogs((prev) => prev.filter((item) => item._id !== id));
+      }
+    } catch (err) {
+      console.error('Failed to delete history item:', err);
+    }
+  };
+
+  const toggleHistory = () => {
+    if (!isHistoryOpen) {
+      fetchHistory();
+    }
+    setIsHistoryOpen(!isHistoryOpen);
+  };
+
+  // Load history on mount
+  useEffect(() => {
+    fetchHistory();
+  }, []);
 
   // 1-Click AI Auto-Fix handler
   const handleApplyFix = (targetIssue) => {
@@ -381,6 +448,24 @@ async function processPayment(cart, user) {
       <header className="workbench-header">
         <div className="header-left">
           <span className="app-title">vibecheck</span>
+        </div>
+
+        <div className="header-right">
+          <button
+            type="button"
+            className="history-toggle-btn"
+            onClick={toggleHistory}
+            title="View past audits from MongoDB Atlas"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+            <span>History</span>
+            {historyLogs.length > 0 && (
+              <span className="history-badge">{historyLogs.length}</span>
+            )}
+          </button>
         </div>
       </header>
 
@@ -714,6 +799,98 @@ async function processPayment(cart, user) {
           </div>
         </section>
       </main>
+
+      {/* Drawer Backdrop */}
+      <div 
+        className={`drawer-backdrop ${isHistoryOpen ? 'open' : ''}`}
+        onClick={() => setIsHistoryOpen(false)} 
+      />
+
+      {/* Slide-over Audit History Drawer */}
+      <aside className={`history-drawer ${isHistoryOpen ? 'open' : ''}`}>
+        <div className="drawer-header">
+          <div className="drawer-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+            <span>Audit History</span>
+            <span className="history-badge">{historyLogs.length}</span>
+          </div>
+          <button 
+            type="button" 
+            className="drawer-close-btn"
+            onClick={() => setIsHistoryOpen(false)}
+            title="Close drawer"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="drawer-body">
+          {isLoadingHistory ? (
+            <div className="history-empty-view">
+              <span className="fast-spinner" />
+              <div className="history-empty-subtitle">Loading history from MongoDB...</div>
+            </div>
+          ) : historyLogs.length === 0 ? (
+            <div className="history-empty-view">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              <div className="history-empty-title">No audit history yet</div>
+              <div className="history-empty-subtitle">Audited reviews will automatically save to your MongoDB Atlas database.</div>
+            </div>
+          ) : (
+            historyLogs.map((log) => {
+              const logExt = (log.fileName?.split('.').pop() || 'ts').slice(0, 4);
+              const issueCount = log.issues?.length || 0;
+              const dateObj = log.createdAt ? new Date(log.createdAt) : new Date();
+              const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const dateStr = dateObj.toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+              return (
+                <div 
+                  key={log._id} 
+                  className="history-card"
+                  onClick={() => handleLoadHistoryItem(log._id)}
+                  title="Click to restore this review"
+                >
+                  <div className="history-card-header">
+                    <div className="history-card-file">
+                      <span className="file-icon">{logExt}</span>
+                      <span className="file-name" style={{ fontSize: '13px' }}>{log.fileName || 'untitled'}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="history-delete-btn"
+                      onClick={(e) => handleDeleteHistoryItem(log._id, e)}
+                      title="Delete record from database"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="history-card-footer">
+                    <span>{dateStr} at {timeStr}</span>
+                    {issueCount === 0 ? (
+                      <span className="history-badge-clean">0 issues</span>
+                    ) : (
+                      <span className="history-badge-issues">{issueCount} {issueCount === 1 ? 'issue' : 'issues'}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </aside>
     </div>
   );
 }
