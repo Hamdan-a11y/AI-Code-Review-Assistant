@@ -1,0 +1,582 @@
+/* =========================================================
+   VIBECHECK WORKBENCH — Light Mode (Stripe & Linear Standard)
+   Minimal, crisp, high-density light engineering tool
+   ========================================================= */
+
+:root {
+  --bg-app: #f4f5f7;
+  --bg-pane: #ffffff;
+  --bg-subtle: #f0f2f5;
+  --bg-hover: #e5e8ed;
+  --bg-active: #dce0e6;
+
+  --border-dim: #e6e8ec;
+  --border-base: #d3d7de;
+
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-tertiary: #9ca3af;
+
+  --critical-bg: #fef2f2;
+  --critical-border: #fecaca;
+  --critical-text: #dc2626;
+
+  --warning-bg: #fffbeb;
+  --warning-border: #fde68a;
+  --warning-text: #d97706;
+
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+
+  --radius-sm: 6px;
+  --radius-xs: 4px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Base Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+.workbench {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* =========================================================
+   1. Workbench Header
+   ========================================================= */
+.workbench-header {
+  height: 44px;
+  min-height: 44px;
+  background-color: var(--bg-pane);
+  border-bottom: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 10;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.app-title {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+/* =========================================================
+   2. Main Workbench Grid (Split View)
+   ========================================================= */
+.workbench-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background-color: var(--border-dim);
+  overflow: hidden;
+}
+
+.pane {
+  background-color: var(--bg-pane);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Common Pane Header */
+.pane-header {
+  height: 38px;
+  min-height: 38px;
+  background-color: var(--bg-pane);
+  border-bottom: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-icon {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.file-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.file-metrics {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-left: 4px;
+}
+
+.pane-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.subtle-btn {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all 120ms var(--ease-out);
+}
+
+.subtle-btn:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  border-color: var(--border-dim);
+  color: var(--text-primary);
+}
+
+.subtle-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.subtle-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   3. Editor Pane & Line Numbers Gutter
+   ========================================================= */
+.editor-container {
+  flex: 1;
+  display: flex;
+  background-color: #fafbfc;
+  overflow: hidden;
+  position: relative;
+}
+
+.gutter {
+  width: 44px;
+  min-width: 44px;
+  padding: 12px 8px 12px 0;
+  text-align: right;
+  user-select: none;
+  overflow: hidden;
+  border-right: 1px solid var(--border-dim);
+  background: #f4f5f7;
+}
+
+.gutter-line-number {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 22px;
+  color: #9ca3af;
+}
+
+.code-field {
+  flex: 1;
+  height: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 12px 14px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 22px;
+  color: #1f2937;
+  tab-size: 2;
+  resize: none;
+  white-space: pre;
+  overflow-y: auto;
+}
+
+.code-field::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* Pane Footer */
+.pane-footer {
+  height: 48px;
+  min-height: 48px;
+  background-color: var(--bg-pane);
+  border-top: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 14px;
+}
+
+/* High-Contrast Light Mode Action Button */
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #111827;
+  color: #ffffff;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  transition: transform 160ms var(--ease-out), background-color 160ms var(--ease-out);
+}
+
+.action-btn:hover:not(:disabled) {
+  background-color: #1f2937;
+}
+
+.action-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.action-btn:disabled {
+  background-color: #e5e7eb;
+  color: #9ca3af;
+  border-color: #d1d5db;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn-shortcut {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.15);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+/* Fast loading spinner */
+.fast-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: fastSpin 0.5s linear infinite;
+}
+
+.fast-spinner.large {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #111827;
+}
+
+@keyframes fastSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* =========================================================
+   4. Results / Diagnostics Panel
+   ========================================================= */
+.results-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all 120ms var(--ease-out);
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.tab-btn.active {
+  color: var(--text-primary);
+  background: var(--bg-subtle);
+  font-weight: 600;
+}
+
+.tab-count {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  padding: 1px 5px;
+  border-radius: 9999px;
+  background: var(--bg-active);
+  color: var(--text-secondary);
+}
+
+.count-critical {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.count-warning {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.results-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #fafbfc;
+}
+
+/* Error Banner */
+.error-banner {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+
+.banner-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #dc2626;
+  margin-bottom: 2px;
+}
+
+.banner-msg {
+  font-size: 11.5px;
+  color: #991b1b;
+  line-height: 1.4;
+}
+
+/* Empty / Idle State */
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 30px 16px;
+  color: var(--text-tertiary);
+}
+
+.empty-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.empty-body {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+
+.empty-body kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-base);
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: var(--text-secondary);
+}
+
+/* Scanning State */
+.scanning-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 30px 16px;
+}
+
+.scanning-title {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-top: 12px;
+}
+
+/* Clean State */
+.clean-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 30px 16px;
+}
+
+.clean-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #059669;
+  margin-bottom: 4px;
+}
+
+.clean-body {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+
+/* Issues List & Rows */
+.issues-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.issue-row {
+  background-color: var(--bg-pane);
+  border: 1px solid var(--border-dim);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: border-color 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
+}
+
+.issue-row:hover {
+  border-color: var(--border-base);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.issue-critical {
+  border-left: 3px solid #ef4444;
+}
+
+.issue-warning {
+  border-left: 3px solid #f59e0b;
+}
+
+.issue-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.issue-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tag-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.tag-critical {
+  background: var(--critical-bg);
+  color: var(--critical-text);
+  border: 1px solid var(--critical-border);
+}
+
+.tag-warning {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  border: 1px solid var(--warning-border);
+}
+
+.tag-line {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-dim);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.issue-headline {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.issue-details {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* =========================================================
+   5. Responsive Mobile Fallback
+   ========================================================= */
+@media (max-width: 860px) {
+  .workbench {
+    height: auto;
+    overflow-y: auto;
+  }
+
+  .workbench-grid {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+  }
+
+  .pane {
+    height: auto;
+    min-height: 400px;
+  }
+
+  .code-field {
+    min-height: 260px;
+  }
+
+  .results-scroll-area {
+    min-height: 300px;
+  }
+}
