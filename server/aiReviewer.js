@@ -26,6 +26,7 @@ RULES:
 - Max 1-2 sentence concise explanations.
 - "originalCode": The EXACT string/line from the input code containing the flaw. Must be an exact match so it can be found and replaced.
 - "fixedCode": The EXACT corrected, production-ready replacement code snippet.
+- IMPORTANT: If the input is NOT actual programming code (e.g. arbitrary English text, notes, empty-looking content, or prose), do NOT return an empty list. Return a single Critical issue: {"type": "Invalid Source Code", "severity": "Critical", "line": 1, "explanation": "The content does not contain valid source code. Please upload or write code.", "originalCode": "", "fixedCode": ""}
 
 Code:
 \`\`\`javascript

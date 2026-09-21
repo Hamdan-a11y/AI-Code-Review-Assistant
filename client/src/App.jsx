@@ -11,7 +11,7 @@ function App() {
   const [copied, setCopied] = useState(false);
 
   // File and folder upload state
-  const [fileName, setFileName] = useState('input.tsx');
+  const [fileName, setFileName] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
@@ -44,7 +44,7 @@ async function processPayment(cart, user) {
 
   const handleLoadSample = () => {
     setCode(sampleSnippet);
-    setFileName('input.tsx');
+    setFileName('sample.ts');
     setUploadedFiles([]);
     setIssues([]);
     setHasScanned(false);
@@ -53,10 +53,13 @@ async function processPayment(cart, user) {
 
   const handleClear = () => {
     setCode('');
+    setFileName('');
     setUploadedFiles([]);
     setIssues([]);
     setHasScanned(false);
     setErrorMessage('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (folderInputRef.current) folderInputRef.current.value = '';
     if (textareaRef.current) textareaRef.current.focus();
   };
 
@@ -67,20 +70,82 @@ async function processPayment(cart, user) {
     setTimeout(() => setCopied(false), 1500);
   };
 
-  // Single file upload handler
+  // Single file upload handler with robust validation
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // 1. Check for empty file
+    if (file.size === 0) {
+      setErrorMessage(`The file "${file.name}" is completely empty (0 bytes). Please select a file with code.`);
+      setFileName('');
+      setCode('');
+      setUploadedFiles([]);
+      setIssues([]);
+      setHasScanned(false);
+      e.target.value = '';
+      return;
+    }
+
+    // 2. Validate supported code extensions
+    const supportedExts = [
+      '.js', '.jsx', '.ts', '.tsx', '.json', '.py', '.java', 
+      '.c', '.cpp', '.cs', '.go', '.rs', '.php', '.rb', 
+      '.html', '.css', '.sql', '.vue', '.svelte', '.sh', 
+      '.yaml', '.yml', '.md', '.txt', '.env'
+    ];
+    const isSupported = supportedExts.some((ext) => file.name.toLowerCase().endsWith(ext));
+    if (!isSupported) {
+      setErrorMessage(`"${file.name}" has an unsupported format. Please upload a source code file (.js, .ts, .py, etc.).`);
+      setFileName('');
+      setCode('');
+      setUploadedFiles([]);
+      setIssues([]);
+      setHasScanned(false);
+      e.target.value = '';
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
-      setCode(event.target.result || '');
+      const content = event.target.result || '';
+
+      // 3. Reject binary/compiled files
+      if (content.includes('\0')) {
+        setErrorMessage(`"${file.name}" appears to be a compiled or binary file and cannot be audited as text code.`);
+        setFileName('');
+        setCode('');
+        setUploadedFiles([]);
+        setIssues([]);
+        setHasScanned(false);
+        return;
+      }
+
+      // 4. Reject whitespace-only files
+      if (!content.trim()) {
+        setErrorMessage(`The file "${file.name}" contains only empty whitespace with no code.`);
+        setFileName('');
+        setCode('');
+        setUploadedFiles([]);
+        setIssues([]);
+        setHasScanned(false);
+        return;
+      }
+
+      setCode(content);
       setFileName(file.name);
       setUploadedFiles([]);
       setIssues([]);
       setHasScanned(false);
       setErrorMessage('');
     };
+
+    reader.onerror = () => {
+      setErrorMessage(`Failed to read file "${file.name}".`);
+      setFileName('');
+      setHasScanned(false);
+    };
+
     reader.readAsText(file);
     e.target.value = '';
   };
@@ -93,7 +158,8 @@ async function processPayment(cart, user) {
     const codeExtensions = [
       '.js', '.jsx', '.ts', '.tsx', '.json', '.py', '.java', 
       '.c', '.cpp', '.cs', '.go', '.rs', '.php', '.rb', 
-      '.html', '.css', '.sql', '.md', '.txt', '.env'
+      '.html', '.css', '.sql', '.vue', '.svelte', '.sh', 
+      '.yaml', '.yml', '.md', '.txt', '.env'
     ];
 
     const validFiles = rawFiles.filter((f) => {
@@ -102,7 +168,9 @@ async function processPayment(cart, user) {
         path.includes('node_modules/') ||
         path.includes('.git/') ||
         path.includes('dist/') ||
-        path.includes('build/')
+        path.includes('build/') ||
+        path.includes('.next/') ||
+        f.size === 0
       ) {
         return false;
       }
@@ -110,7 +178,9 @@ async function processPayment(cart, user) {
     });
 
     if (validFiles.length === 0) {
-      alert('No supported code files found in the selected folder.');
+      setErrorMessage('No valid, non-empty source code files found in the selected folder.');
+      setHasScanned(false);
+      setIssues([]);
       e.target.value = '';
       return;
     }
@@ -119,9 +189,14 @@ async function processPayment(cart, user) {
       return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = (event) => {
+          const content = event.target.result || '';
+          if (content.includes('\0') || !content.trim()) {
+            resolve(null);
+            return;
+          }
           resolve({
             name: file.webkitRelativePath || file.name,
-            content: event.target.result || '',
+            content,
           });
         };
         reader.onerror = () => resolve(null);
@@ -130,14 +205,20 @@ async function processPayment(cart, user) {
     };
 
     const loaded = (await Promise.all(validFiles.map(readFile))).filter(Boolean);
-    if (loaded.length > 0) {
-      setUploadedFiles(loaded);
-      setFileName(loaded[0].name);
-      setCode(loaded[0].content);
-      setIssues([]);
+    if (loaded.length === 0) {
+      setErrorMessage('All code files in the selected folder are empty or non-text binaries.');
       setHasScanned(false);
-      setErrorMessage('');
+      setIssues([]);
+      e.target.value = '';
+      return;
     }
+
+    setUploadedFiles(loaded);
+    setFileName(loaded[0].name);
+    setCode(loaded[0].content);
+    setIssues([]);
+    setHasScanned(false);
+    setErrorMessage('');
     e.target.value = '';
   };
 
@@ -154,7 +235,25 @@ async function processPayment(cart, user) {
   };
 
   const handleScan = async () => {
-    if (!code.trim() || isLoading) return;
+    if (isLoading) return;
+
+    // 1. Check if empty
+    if (!code || !code.trim()) {
+      setErrorMessage('The editor is empty. Please enter or upload code to audit.');
+      setHasScanned(false);
+      setIssues([]);
+      return;
+    }
+
+    // 2. Check if only comments or trivial whitespace
+    const stripped = code.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '').trim();
+    if (stripped.length < 5) {
+      setErrorMessage('No executable code detected. The editor contains only comments or empty whitespace.');
+      setHasScanned(false);
+      setIssues([]);
+      return;
+    }
+
     setIsLoading(true);
     setErrorMessage('');
 
@@ -168,7 +267,8 @@ async function processPayment(cart, user) {
       });
 
       if (!response.ok) {
-        throw new Error(`Server returned HTTP ${response.status}`);
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.message || errData?.error || `Server returned HTTP ${response.status}`);
       }
 
       const data = await response.json();
@@ -177,7 +277,7 @@ async function processPayment(cart, user) {
 
     } catch (error) {
       console.error('Scan error:', error);
-      setErrorMessage('Connection failed. Ensure your backend server is active on port 5000.');
+      setErrorMessage(error.message || 'Connection failed. Ensure your backend server is active on port 5000.');
       setHasScanned(false);
     } finally {
       setIsLoading(false);
@@ -235,10 +335,21 @@ async function processPayment(cart, user) {
   };
 
   // Metrics & File Info
-  const lineCount = code ? code.split('\n').length : 1;
+  const lineCount = code.trim() ? code.split('\n').length : 0;
   const criticalCount = issues.filter(i => i.severity?.toLowerCase() === 'critical').length;
   const warningCount = issues.filter(i => i.severity?.toLowerCase() === 'warning').length;
-  const fileExt = (fileName.split('.').pop() || 'ts').slice(0, 4);
+
+  const getFileExtension = () => {
+    if (fileName && fileName.includes('.')) {
+      return fileName.split('.').pop().toLowerCase().slice(0, 4);
+    }
+    if (code.includes('import ') || code.includes('export ') || code.includes('const ') || code.includes('function ')) {
+      return code.includes(': ') || code.includes('interface ') ? 'ts' : 'js';
+    }
+    if (code.includes('def ') || code.includes('print(')) return 'py';
+    return 'code';
+  };
+  const fileExt = getFileExtension();
 
   const filteredIssues = issues.filter(issue => {
     if (activeFilter === 'CRITICAL') return issue.severity?.toLowerCase() === 'critical';
@@ -279,24 +390,33 @@ async function processPayment(cart, user) {
         <section className="pane pane-editor">
           <div className="pane-header">
             <div className="file-info">
-              <span className="file-icon">{fileExt}</span>
-              {uploadedFiles.length > 1 ? (
-                <select
-                  className="file-select"
-                  value={fileName}
-                  onChange={(e) => handleSelectFile(e.target.value)}
-                  title="Select file from uploaded folder"
-                >
-                  {uploadedFiles.map((f, i) => (
-                    <option key={i} value={f.name}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
+              {code.trim() || fileName ? (
+                <>
+                  <span className="file-icon">{fileExt}</span>
+                  {uploadedFiles.length > 1 ? (
+                    <select
+                      className="file-select"
+                      value={fileName}
+                      onChange={(e) => handleSelectFile(e.target.value)}
+                      title="Select file from uploaded folder"
+                    >
+                      {uploadedFiles.map((f, i) => (
+                        <option key={i} value={f.name}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="file-name">{fileName || 'untitled'}</span>
+                  )}
+                  <span className="file-metrics">{lineCount} {lineCount === 1 ? 'line' : 'lines'}</span>
+                </>
               ) : (
-                <span className="file-name">{fileName}</span>
+                <>
+                  <span className="file-name" style={{ color: 'var(--text-tertiary)' }}>No file loaded</span>
+                  <span className="file-metrics">0 lines</span>
+                </>
               )}
-              <span className="file-metrics">{lineCount} lines</span>
             </div>
 
             <div className="pane-actions">
@@ -355,7 +475,19 @@ async function processPayment(cart, user) {
               placeholder="// Paste code or upload a file / folder to review..."
               spellCheck="false"
               value={code}
-              onChange={(e) => setCode(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setCode(val);
+                if (!val.trim()) {
+                  setFileName('');
+                  setUploadedFiles([]);
+                  setIssues([]);
+                  setHasScanned(false);
+                  setErrorMessage('');
+                } else if (!fileName) {
+                  setFileName('untitled');
+                }
+              }}
               onScroll={handleScroll}
             />
           </div>
@@ -456,16 +588,23 @@ async function processPayment(cart, user) {
           </div>
 
           <div className="results-scroll-area">
-            {/* Connection Error */}
+            {/* Error Banner */}
             {errorMessage && (
               <div className="error-banner">
-                <div className="banner-title">Connection Error</div>
+                <div className="banner-header">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <span className="banner-title">Cannot Audit File</span>
+                </div>
                 <div className="banner-msg">{errorMessage}</div>
               </div>
             )}
 
             {/* Idle State */}
-            {!hasScanned && !isLoading && (
+            {!hasScanned && !isLoading && !errorMessage && (
               <div className="empty-state">
                 <div className="empty-title">No issues to display</div>
                 <div className="empty-body">Press <kbd>⌘↵</kbd> or click <strong>Audit Code</strong>.</div>
@@ -480,8 +619,8 @@ async function processPayment(cart, user) {
               </div>
             )}
 
-            {/* Clean State */}
-            {hasScanned && !isLoading && issues.length === 0 && (
+            {/* Clean State (Only shown when audit was truly performed, has no error, and found 0 issues) */}
+            {hasScanned && !isLoading && !errorMessage && issues.length === 0 && (
               <div className="clean-state">
                 <div className="clean-title">No issues identified</div>
                 <div className="clean-body">Passed all security, syntax, and logic checks.</div>
