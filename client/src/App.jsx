@@ -9,6 +9,13 @@ function App() {
   const [errorMessage, setErrorMessage] = useState('');
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [copied, setCopied] = useState(false);
+
+  // File and folder upload state
+  const [fileName, setFileName] = useState('input.tsx');
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const fileInputRef = useRef(null);
+  const folderInputRef = useRef(null);
+
   const textareaRef = useRef(null);
   const lineNumbersRef = useRef(null);
 
@@ -37,6 +44,8 @@ async function processPayment(cart, user) {
 
   const handleLoadSample = () => {
     setCode(sampleSnippet);
+    setFileName('input.tsx');
+    setUploadedFiles([]);
     setIssues([]);
     setHasScanned(false);
     setErrorMessage('');
@@ -44,6 +53,7 @@ async function processPayment(cart, user) {
 
   const handleClear = () => {
     setCode('');
+    setUploadedFiles([]);
     setIssues([]);
     setHasScanned(false);
     setErrorMessage('');
@@ -55,6 +65,92 @@ async function processPayment(cart, user) {
     navigator.clipboard.writeText(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  };
+
+  // Single file upload handler
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setCode(event.target.result || '');
+      setFileName(file.name);
+      setUploadedFiles([]);
+      setIssues([]);
+      setHasScanned(false);
+      setErrorMessage('');
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  // Folder upload handler (filters for code files & ignores node_modules, git, etc.)
+  const handleFolderUpload = async (e) => {
+    const rawFiles = Array.from(e.target.files || []);
+    if (rawFiles.length === 0) return;
+
+    const codeExtensions = [
+      '.js', '.jsx', '.ts', '.tsx', '.json', '.py', '.java', 
+      '.c', '.cpp', '.cs', '.go', '.rs', '.php', '.rb', 
+      '.html', '.css', '.sql', '.md', '.txt', '.env'
+    ];
+
+    const validFiles = rawFiles.filter((f) => {
+      const path = f.webkitRelativePath || f.name;
+      if (
+        path.includes('node_modules/') ||
+        path.includes('.git/') ||
+        path.includes('dist/') ||
+        path.includes('build/')
+      ) {
+        return false;
+      }
+      return codeExtensions.some((ext) => path.toLowerCase().endsWith(ext));
+    });
+
+    if (validFiles.length === 0) {
+      alert('No supported code files found in the selected folder.');
+      e.target.value = '';
+      return;
+    }
+
+    const readFile = (file) => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          resolve({
+            name: file.webkitRelativePath || file.name,
+            content: event.target.result || '',
+          });
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsText(file);
+      });
+    };
+
+    const loaded = (await Promise.all(validFiles.map(readFile))).filter(Boolean);
+    if (loaded.length > 0) {
+      setUploadedFiles(loaded);
+      setFileName(loaded[0].name);
+      setCode(loaded[0].content);
+      setIssues([]);
+      setHasScanned(false);
+      setErrorMessage('');
+    }
+    e.target.value = '';
+  };
+
+  // Switch between files loaded from folder
+  const handleSelectFile = (selectedName) => {
+    const found = uploadedFiles.find((f) => f.name === selectedName);
+    if (found) {
+      setFileName(found.name);
+      setCode(found.content);
+      setIssues([]);
+      setHasScanned(false);
+      setErrorMessage('');
+    }
   };
 
   const handleScan = async () => {
@@ -107,10 +203,11 @@ async function processPayment(cart, user) {
     }
   };
 
-  // Metrics
+  // Metrics & File Info
   const lineCount = code ? code.split('\n').length : 1;
   const criticalCount = issues.filter(i => i.severity?.toLowerCase() === 'critical').length;
   const warningCount = issues.filter(i => i.severity?.toLowerCase() === 'warning').length;
+  const fileExt = (fileName.split('.').pop() || 'ts').slice(0, 4);
 
   const filteredIssues = issues.filter(issue => {
     if (activeFilter === 'CRITICAL') return issue.severity?.toLowerCase() === 'critical';
@@ -120,39 +217,58 @@ async function processPayment(cart, user) {
 
   return (
     <div className="workbench">
-      {/* Top Application Bar (Minimal & Functional) */}
+      {/* Hidden file & folder inputs */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        style={{ display: 'none' }}
+        accept=".js,.jsx,.ts,.tsx,.json,.py,.java,.c,.cpp,.cs,.go,.rs,.php,.rb,.html,.css,.sql,.txt,.md"
+      />
+      <input
+        type="file"
+        ref={folderInputRef}
+        onChange={handleFolderUpload}
+        style={{ display: 'none' }}
+        webkitdirectory=""
+        directory=""
+        multiple
+      />
+
+      {/* Top Application Bar */}
       <header className="workbench-header">
         <div className="header-left">
           <span className="app-title">vibecheck</span>
         </div>
       </header>
 
-      {/* Main Split Workbench (Editor Left, Diagnostics Right) */}
+      {/* Main Split Workbench */}
       <main className="workbench-grid">
         {/* LEFT: Code Input & Editor */}
         <section className="pane pane-editor">
           <div className="pane-header">
             <div className="file-info">
-              <span className="file-icon">ts</span>
-              <span className="file-name">input.tsx</span>
+              <span className="file-icon">{fileExt}</span>
+              {uploadedFiles.length > 1 ? (
+                <select
+                  className="file-select"
+                  value={fileName}
+                  onChange={(e) => handleSelectFile(e.target.value)}
+                  title="Select file from uploaded folder"
+                >
+                  {uploadedFiles.map((f, i) => (
+                    <option key={i} value={f.name}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="file-name">{fileName}</span>
+              )}
               <span className="file-metrics">{lineCount} lines</span>
             </div>
 
             <div className="pane-actions">
-              <button 
-                type="button" 
-                className="toolbar-btn" 
-                onClick={handleLoadSample}
-                title="Load sample vulnerable code"
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                  <line x1="16" y1="13" x2="8" y2="13"/>
-                  <line x1="16" y1="17" x2="8" y2="17"/>
-                </svg>
-                <span>Sample Code</span>
-              </button>
               <button 
                 type="button" 
                 className="toolbar-btn" 
@@ -165,6 +281,7 @@ async function processPayment(cart, user) {
                 </svg>
                 <span>Clear</span>
               </button>
+
               <button 
                 type="button" 
                 className="toolbar-btn" 
@@ -204,7 +321,7 @@ async function processPayment(cart, user) {
             <textarea
               ref={textareaRef}
               className="code-field"
-              placeholder="// Paste TypeScript or JavaScript here..."
+              placeholder="// Paste code or upload a file / folder to review..."
               spellCheck="false"
               value={code}
               onChange={(e) => setCode(e.target.value)}
@@ -213,26 +330,69 @@ async function processPayment(cart, user) {
           </div>
 
           <div className="pane-footer">
-            <div />
+            <div className="footer-actions-left">
+              <button
+                type="button"
+                className="toolbar-btn"
+                onClick={() => fileInputRef.current?.click()}
+                title="Upload a single code file"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                <span>Upload File</span>
+              </button>
 
-            <button
-              type="button"
-              className="action-btn"
-              disabled={!code.trim() || isLoading}
-              onClick={handleScan}
-            >
-              {isLoading ? (
-                <>
-                  <span className="fast-spinner" />
-                  <span>Auditing...</span>
-                </>
-              ) : (
-                <>
-                  <span>Audit Code</span>
-                  <span className="btn-shortcut">⌘↵</span>
-                </>
-              )}
-            </button>
+              <button
+                type="button"
+                className="toolbar-btn"
+                onClick={() => folderInputRef.current?.click()}
+                title="Upload an entire folder / codebase"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                </svg>
+                <span>Upload Folder</span>
+              </button>
+
+              <button 
+                type="button" 
+                className="toolbar-btn" 
+                onClick={handleLoadSample}
+                title="Load sample vulnerable code"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                <span>Sample Code</span>
+              </button>
+            </div>
+
+            <div className="footer-actions-right">
+              <button
+                type="button"
+                className="action-btn"
+                disabled={!code.trim() || isLoading}
+                onClick={handleScan}
+              >
+                {isLoading ? (
+                  <>
+                    <span className="fast-spinner" />
+                    <span>Auditing...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Audit Code</span>
+                    <span className="btn-shortcut">⌘↵</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </section>
 
@@ -273,11 +433,11 @@ async function processPayment(cart, user) {
               </div>
             )}
 
-            {/* Idle State: No code scanned yet */}
+            {/* Idle State */}
             {!hasScanned && !isLoading && (
               <div className="empty-state">
                 <div className="empty-title">No issues to display</div>
-                <div className="empty-body">Press <kbd>⌘↵</kbd> to run audit.</div>
+                <div className="empty-body">Press <kbd>⌘↵</kbd> or click <strong>Audit Code</strong>.</div>
               </div>
             )}
 
@@ -285,7 +445,7 @@ async function processPayment(cart, user) {
             {isLoading && (
               <div className="scanning-state">
                 <div className="fast-spinner large" />
-                <div className="scanning-title">Auditing code...</div>
+                <div className="scanning-title">Auditing code with AI...</div>
               </div>
             )}
 
@@ -293,7 +453,7 @@ async function processPayment(cart, user) {
             {hasScanned && !isLoading && issues.length === 0 && (
               <div className="clean-state">
                 <div className="clean-title">No issues identified</div>
-                <div className="clean-body">Passed all security and logic checks.</div>
+                <div className="clean-body">Passed all security, syntax, and logic checks.</div>
               </div>
             )}
 
