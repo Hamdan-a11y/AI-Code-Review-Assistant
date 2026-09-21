@@ -184,6 +184,37 @@ async function processPayment(cart, user) {
     }
   };
 
+  // 1-Click AI Auto-Fix handler
+  const handleApplyFix = (targetIssue) => {
+    if (!targetIssue || !targetIssue.fixedCode) return;
+
+    let updatedCode = code;
+    const { originalCode, fixedCode, line } = targetIssue;
+
+    // 1. Exact substring replacement
+    if (originalCode && updatedCode.includes(originalCode)) {
+      updatedCode = updatedCode.replace(originalCode, fixedCode);
+    } else if (originalCode && updatedCode.includes(originalCode.trim())) {
+      // 2. Trimmed substring replacement
+      updatedCode = updatedCode.replace(originalCode.trim(), fixedCode.trim());
+    } else if (line && line > 0) {
+      // 3. Line-based replacement fallback
+      const lines = updatedCode.split('\n');
+      const lineIndex = line - 1;
+      if (lineIndex < lines.length) {
+        lines[lineIndex] = fixedCode;
+        updatedCode = lines.join('\n');
+      }
+    }
+
+    setCode(updatedCode);
+
+    // Mark issue as applied
+    setIssues((prev) =>
+      prev.map((iss) => (iss === targetIssue ? { ...iss, applied: true } : iss))
+    );
+  };
+
   // Keyboard shortcut: Cmd/Ctrl + Enter to trigger review
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -464,18 +495,71 @@ async function processPayment(cart, user) {
                   const severity = (issue.severity || 'Warning').toUpperCase();
                   const isCrit = severity === 'CRITICAL';
                   return (
-                    <div key={idx} className={`issue-row ${isCrit ? 'issue-critical' : 'issue-warning'}`}>
+                    <div 
+                      key={idx} 
+                      className={`issue-row ${isCrit ? 'issue-critical' : 'issue-warning'} ${issue.applied ? 'issue-fixed' : ''}`}
+                    >
                       <div className="issue-meta-row">
                         <div className="issue-tags">
                           <span className={`tag-badge ${isCrit ? 'tag-critical' : 'tag-warning'}`}>
                             {severity}
                           </span>
                           <span className="tag-line">Line {issue.line || 1}</span>
+                          {issue.applied && (
+                            <span className="tag-badge" style={{ background: '#ecfdf5', color: '#059669', borderColor: '#a7f3d0' }}>
+                              FIXED
+                            </span>
+                          )}
                         </div>
                       </div>
 
                       <div className="issue-headline">{issue.type}</div>
                       <div className="issue-details">{issue.explanation}</div>
+
+                      {issue.fixedCode && (
+                        <div className="diff-card">
+                          <div className="diff-header">
+                            <span className="diff-badge">Suggested Auto-Fix</span>
+                            <button
+                              type="button"
+                              className={`apply-fix-btn ${issue.applied ? 'applied' : ''}`}
+                              disabled={issue.applied}
+                              onClick={() => handleApplyFix(issue)}
+                              title="Apply corrected code directly into the editor"
+                            >
+                              {issue.applied ? (
+                                <>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                  <span>Fixed</span>
+                                </>
+                              ) : (
+                                <>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path d="M12 20h9" />
+                                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                  </svg>
+                                  <span>Apply Fix</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+
+                          <div className="diff-code-box">
+                            {issue.originalCode && (
+                              <div className="diff-line diff-remove">
+                                <span className="diff-gutter">—</span>
+                                <code>{issue.originalCode}</code>
+                              </div>
+                            )}
+                            <div className="diff-line diff-add">
+                              <span className="diff-gutter">+</span>
+                              <code>{issue.fixedCode}</code>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

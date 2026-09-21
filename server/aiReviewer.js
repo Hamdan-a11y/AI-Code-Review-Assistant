@@ -24,6 +24,8 @@ RULES:
 - No duplicate issues for the same line.
 - Accurate 1-based line numbers.
 - Max 1-2 sentence concise explanations.
+- "originalCode": The EXACT string/line from the input code containing the flaw. Must be an exact match so it can be found and replaced.
+- "fixedCode": The EXACT corrected, production-ready replacement code snippet.
 
 Code:
 \`\`\`javascript
@@ -36,20 +38,22 @@ Respond ONLY with a valid JSON array of objects:
     "type": "Issue Name",
     "severity": "Critical" | "Warning" | "Info",
     "line": 1,
-    "explanation": "Brief description and fix."
+    "explanation": "Brief explanation of the vulnerability or flaw.",
+    "originalCode": "exact flawed line from the code",
+    "fixedCode": "exact corrected replacement line"
   }
 ]
 `;
 
   try {
-    console.log('⚡ Sending code to Gemini 3.5 Flash Lite for high-speed audit...');
+    console.log('⚡ Sending code to Gemini 3.5 Flash Lite for high-speed audit with Auto-Fix...');
     const response = await ai.models.generateContent({
       model: 'gemini-3.5-flash-lite',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
         temperature: 0.1,
-        maxOutputTokens: 600,
+        maxOutputTokens: 1200,
       }
     });
 
