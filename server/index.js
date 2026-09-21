@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 import { scanCode } from './scanner.js';
-import { reviewCodeWithAI } from './aiReviewer.js';
+import { reviewCodeWithAI, detectLanguage } from './aiReviewer.js';
 import { AuditLog } from './models/AuditLog.js';
 import { Snippet } from './models/Snippet.js';
 
@@ -15,7 +15,7 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 // Connect to MongoDB Atlas
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('🍃 Connected to MongoDB Atlas successfully!'))
-  .catch((err) => console.error('❌ MongoDB connection error:', err));
+  .catch((err) => console.error('❌ MongoDB connection error:', err.message));
 
 const app = express();
 
@@ -58,10 +58,11 @@ app.post('/api/scan', async (req, res) => {
       });
     }
 
-    // 4. Run strict Gemini AI review first
+    // 4. Run strict Gemini AI review first with multi-language awareness
+    const detectedLanguage = detectLanguage(fileName, code);
     let aiIssues = [];
     try {
-      aiIssues = await reviewCodeWithAI(code);
+      aiIssues = await reviewCodeWithAI(code, fileName);
     } catch (aiErr) {
       console.error('AI Review failure:', aiErr);
       aiIssues = [];
@@ -74,33 +75,31 @@ app.post('/api/scan', async (req, res) => {
       finalIssues = aiIssues;
     } else {
       // Offline fallback: Use static regex scanner if AI is unavailable
-      finalIssues = scanCode(code);
+      finalIssues = scanCode(code, fileName);
     }
 
     const stats = {
       total: finalIssues.length,
-      engine: aiIssues.length > 0 ? 'Gemini AI' : 'Static Regex Fallback'
+      engine: aiIssues.length > 0 ? 'Gemini AI' : 'Static Regex Fallback',
+      language: detectedLanguage
     };
 
-    // 5. Persist audit record in MongoDB Atlas
-    let savedLogId = null;
-    try {
-      const savedRecord = await AuditLog.create({
-        fileName: fileName || 'untitled',
-        code,
-        issues: finalIssues,
-        stats
-      });
-      savedLogId = savedRecord._id;
-      console.log('💾 Audit log saved to MongoDB Atlas! Record ID:', savedLogId);
-    } catch (dbErr) {
-      console.error('Warning: Failed to save audit log to MongoDB:', dbErr.message);
-    }
-
+    // 5. Send audit response immediately to the frontend
     res.json({
       issues: finalIssues,
-      stats,
-      logId: savedLogId
+      stats
+    });
+
+    // 6. Asynchronously save audit record in MongoDB Atlas in the background
+    AuditLog.create({
+      fileName: fileName || 'untitled',
+      code,
+      issues: finalIssues,
+      stats
+    }).then((savedRecord) => {
+      console.log('💾 Audit log saved to MongoDB Atlas! Record ID:', savedRecord._id);
+    }).catch((dbErr) => {
+      console.error('Warning: Failed to save audit log to MongoDB:', dbErr.message);
     });
   } catch (err) {
     console.error('Server error during scan:', err);
@@ -117,14 +116,18 @@ app.post('/api/scan', async (req, res) => {
 // Get recent audit history (latest 20)
 app.get('/api/history', async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.json([]);
+    }
     const logs = await AuditLog.find()
       .sort({ createdAt: -1 })
       .limit(20)
-      .select('-code'); // exclude full code for quick list loading
+      .select('-code')
+      .maxTimeMS(3000);
     res.json(logs);
   } catch (err) {
-    console.error('Error fetching history:', err);
-    res.status(500).json({ error: 'Failed to fetch history' });
+    console.error('Error fetching history:', err.message);
+    res.json([]);
   }
 });
 

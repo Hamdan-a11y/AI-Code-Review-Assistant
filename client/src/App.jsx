@@ -21,44 +21,185 @@ function App() {
   const [historyLogs, setHistoryLogs] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
+  // Multi-Language & Sample Presets state
+  const [detectedLanguage, setDetectedLanguage] = useState('');
+  const [isSampleMenuOpen, setIsSampleMenuOpen] = useState(false);
+  const sampleMenuRef = useRef(null);
+
   const textareaRef = useRef(null);
   const lineNumbersRef = useRef(null);
 
-  const sampleSnippet = `// Production checkout handler snippet
-const stripeSecretKey = "sk_live_9847291048572019482";
+  // Close sample menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (sampleMenuRef.current && !sampleMenuRef.current.contains(e.target)) {
+        setIsSampleMenuOpen(false);
+      }
+    };
+    if (isSampleMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isSampleMenuOpen]);
 
-async function processPayment(cart, user) {
-  // Execute dynamically calculated payment discount
-  const discountCalculation = eval(cart.discountFormula);
+  // Curated Multi-Language Vibe-Coded Presets
+  const samplePresets = [
+    {
+      id: 'python',
+      label: '🐍 Python (FastAPI)',
+      sub: 'Command injection & pickle deserialization',
+      fileName: 'service.py',
+      code: `import os
+import pickle
+from fastapi import FastAPI
 
-  try {
-    const charge = await stripe.charges.create({
-      amount: cart.total - discountCalculation,
-      currency: "usd",
-      customer: user.stripeId
-    });
-  } catch (err) {
-    // Silent catch
-  }
+app = FastAPI()
 
-  // Raw query risk
-  const logQuery = "INSERT INTO audit_logs (userId, total) VALUES ('" + user.id + "', " + cart.total + ")";
-  await db.query(logQuery);
+# Vibe-coded API key hardcoded in source
+API_SECRET_KEY = "mock_secret_key_vibe_check_99482"
+
+@app.post("/session/deserialize")
+async def load_session(payload: bytes):
+    # Critical: Insecure pickle deserialization allows RCE
+    data = pickle.loads(payload)
+    return data
+
+@app.get("/system/backup")
+def run_backup(folder_name: str):
+    # Critical: Command injection via shell string formatting
+    os.system("tar -czf backup.tar.gz " + folder_name)
+    return {"status": "ok"}
+
+def fetch_telemetry():
+    try:
+        pass
+    except:
+        # Dirty code: Silent error swallowing
+        pass
+`
+    },
+    {
+      id: 'c_cpp',
+      label: '⚙️ C / C++ (Memory)',
+      sub: 'Buffer overflow & unsafe memory copying',
+      fileName: 'packet_parser.c',
+      code: `#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+void parse_packet(const char *user_payload) {
+    char stack_buf[64];
+    
+    // Critical: Unbounded stack buffer overflow (CWE-120)
+    strcpy(stack_buf, user_payload);
+    
+    printf("Payload processed: %s\\n", stack_buf);
 }
-`;
 
-  const handleLoadSample = () => {
-    setCode(sampleSnippet);
-    setFileName('sample.ts');
+int main() {
+    char untrusted_input[512];
+    // Dangerous legacy input reading
+    gets(untrusted_input);
+    parse_packet(untrusted_input);
+    return 0;
+}
+`
+    },
+    {
+      id: 'csharp',
+      label: '🔷 C# (.NET)',
+      sub: 'BinaryFormatter RCE & raw SQL query',
+      fileName: 'PaymentWorker.cs',
+      code: `using System;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
+using Microsoft.Data.SqlClient;
+
+public class PaymentWorker {
+    // Critical: Insecure BinaryFormatter deserialization allows RCE
+    public object RestoreSession(byte[] blob) {
+        BinaryFormatter formatter = new BinaryFormatter();
+        using (MemoryStream ms = new MemoryStream(blob)) {
+            return formatter.Deserialize(ms);
+        }
+    }
+
+    // Critical: SQL injection string concatenation
+    public void DeleteAccount(string userId, SqlConnection conn) {
+        string query = "DELETE FROM Users WHERE Id = '" + userId + "'";
+        SqlCommand cmd = new SqlCommand(query, conn);
+        cmd.ExecuteNonQuery();
+    }
+}
+`
+    },
+    {
+      id: 'java',
+      label: '☕ Java (Spring)',
+      sub: 'SQL injection & silent exception suppression',
+      fileName: 'OrderController.java',
+      code: `import java.sql.Connection;
+import java.sql.Statement;
+
+public class OrderController {
+    // Critical: SQL Injection via unparameterized Statement
+    public void queryOrder(String orderId, Connection conn) throws Exception {
+        String query = "SELECT * FROM orders WHERE id = '" + orderId + "'";
+        Statement stmt = conn.createStatement();
+        stmt.executeQuery(query);
+    }
+
+    // Dirty code: Silent exception suppression obscures runtime bugs
+    public void syncOrderCache() {
+        try {
+            Thread.sleep(100);
+        } catch (Exception e) {
+            // Silently suppressed
+        }
+    }
+}
+`
+    },
+    {
+      id: 'react_ts',
+      label: '⚛️ React / TypeScript',
+      sub: 'Vibe-coded XSS & exposed API key',
+      fileName: 'VibeWidget.tsx',
+      code: `import React from 'react';
+
+export default function VibeWidget({ rawArticleHtml }: { rawArticleHtml: string }) {
+  // Critical Vibe-Coded Anti-Pattern: Private secret exposed in client code
+  const STRIPE_SECRET = "mock_secret_key_vibe_check_99482";
+
+  return (
+    <article className="card">
+      <h2>Article Preview</h2>
+      {/* Critical: DOM Cross-Site Scripting (XSS) */}
+      <div dangerouslySetInnerHTML={{ __html: rawArticleHtml }} />
+    </article>
+  );
+}
+`
+    }
+  ];
+
+  const handleSelectSample = (preset) => {
+    setCode(preset.code);
+    setFileName(preset.fileName);
+    setDetectedLanguage(preset.label.replace(/^.*? /, ''));
     setUploadedFiles([]);
     setIssues([]);
     setHasScanned(false);
     setErrorMessage('');
+    setIsSampleMenuOpen(false);
   };
 
   const handleClear = () => {
     setCode('');
     setFileName('');
+    setDetectedLanguage('');
     setUploadedFiles([]);
     setIssues([]);
     setHasScanned(false);
@@ -278,6 +419,9 @@ async function processPayment(cart, user) {
 
       const data = await response.json();
       setIssues(data.issues || []);
+      if (data.stats?.language) {
+        setDetectedLanguage(data.stats.language);
+      }
       setHasScanned(true);
       fetchHistory(); // Refresh audit history from MongoDB
 
@@ -315,6 +459,9 @@ async function processPayment(cart, user) {
         setCode(log.code || '');
         setFileName(log.fileName || 'restored.ts');
         setIssues(log.issues || []);
+        if (log.stats?.language) {
+          setDetectedLanguage(log.stats.language);
+        }
         setHasScanned(true);
         setErrorMessage('');
         setIsHistoryOpen(false);
@@ -495,6 +642,12 @@ async function processPayment(cart, user) {
                     <span className="file-name">{fileName || 'untitled'}</span>
                   )}
                   <span className="file-metrics">{lineCount} {lineCount === 1 ? 'line' : 'lines'}</span>
+                  {detectedLanguage && (
+                    <span className="lang-badge" title={`Engine active: ${detectedLanguage}`}>
+                      <span className="lang-dot" />
+                      {detectedLanguage}
+                    </span>
+                  )}
                 </>
               ) : (
                 <>
@@ -565,6 +718,7 @@ async function processPayment(cart, user) {
                 setCode(val);
                 if (!val.trim()) {
                   setFileName('');
+                  setDetectedLanguage('');
                   setUploadedFiles([]);
                   setIssues([]);
                   setHasScanned(false);
@@ -605,20 +759,45 @@ async function processPayment(cart, user) {
                 <span>Upload Folder</span>
               </button>
 
-              <button 
-                type="button" 
-                className="toolbar-btn" 
-                onClick={handleLoadSample}
-                title="Load sample vulnerable code"
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                  <line x1="16" y1="13" x2="8" y2="13"/>
-                  <line x1="16" y1="17" x2="8" y2="17"/>
-                </svg>
-                <span>Sample Code</span>
-              </button>
+              {/* Multi-Language Sample Code Menu */}
+              <div className="sample-menu-container" ref={sampleMenuRef}>
+                <button 
+                  type="button" 
+                  className={`toolbar-btn ${isSampleMenuOpen ? 'active' : ''}`}
+                  onClick={() => setIsSampleMenuOpen(!isSampleMenuOpen)}
+                  title="Load sample code in Python, C/C++, C#, Java, React"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                  </svg>
+                  <span>Sample Presets</span>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ transform: isSampleMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }}>
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {isSampleMenuOpen && (
+                  <div className="sample-popover">
+                    <div className="sample-popover-header">
+                      <span>VULNERABLE SAMPLE PRESETS</span>
+                    </div>
+                    {samplePresets.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        className="sample-item-btn"
+                        onClick={() => handleSelectSample(preset)}
+                      >
+                        <div className="sample-item-title">{preset.label}</div>
+                        <div className="sample-item-desc">{preset.sub}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="footer-actions-right">
@@ -700,7 +879,7 @@ async function processPayment(cart, user) {
             {isLoading && (
               <div className="scanning-state">
                 <div className="fast-spinner large" />
-                <div className="scanning-title">Auditing code with AI...</div>
+                <div className="scanning-title">Auditing code...</div>
               </div>
             )}
 
@@ -729,6 +908,11 @@ async function processPayment(cart, user) {
                             {severity}
                           </span>
                           <span className="tag-line">Line {issue.line || 1}</span>
+                          {issue.category && (
+                            <span className="tag-category">
+                              {issue.category}
+                            </span>
+                          )}
                           {issue.applied && (
                             <span className="tag-badge" style={{ background: '#ecfdf5', color: '#059669', borderColor: '#a7f3d0' }}>
                               FIXED
