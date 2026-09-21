@@ -141,29 +141,53 @@ async function processPayment(cart, user) {
             <div className="pane-actions">
               <button 
                 type="button" 
-                className="subtle-btn" 
+                className="toolbar-btn" 
                 onClick={handleLoadSample}
-                title="Load sample"
+                title="Load sample vulnerable code"
               >
-                Sample
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                <span>Sample Code</span>
               </button>
               <button 
                 type="button" 
-                className="subtle-btn" 
+                className="toolbar-btn" 
                 onClick={handleClear}
                 disabled={!code && issues.length === 0}
-                title="Clear"
+                title="Clear code editor"
               >
-                Clear
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                </svg>
+                <span>Clear</span>
               </button>
               <button 
                 type="button" 
-                className="subtle-btn" 
+                className="toolbar-btn" 
                 onClick={handleCopy}
                 disabled={!code}
-                title="Copy"
+                title="Copy code to clipboard"
               >
-                {copied ? 'Copied' : 'Copy'}
+                {copied ? (
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    <span style={{ color: '#059669' }}>Copied</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                    <span>Copy</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
