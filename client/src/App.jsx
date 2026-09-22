@@ -792,7 +792,7 @@ export default function VibeWidget({ rawArticleHtml }: { rawArticleHtml: string 
                 </>
               ) : (
                 <>
-                  <span className="file-name" style={{ color: 'var(--text-tertiary)' }}>No file loaded</span>
+                  <span className="file-name file-name-muted">untitled</span>
                   <span className="file-metrics">0 lines</span>
                 </>
               )}
@@ -1032,8 +1032,15 @@ export default function VibeWidget({ rawArticleHtml }: { rawArticleHtml: string 
             {/* Idle State */}
             {!hasScanned && !isLoading && !errorMessage && (
               <div className="empty-state">
-                <div className="empty-title">No issues to display</div>
-                <div className="empty-body">Press <kbd>Ctrl+Enter</kbd> or click <strong>Audit Code</strong>.</div>
+                <div className="empty-icon-box">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                </div>
+                <div className="empty-headline">No issues to display</div>
+                <div className="empty-body">
+                  Audit your code with <kbd>Ctrl+Enter</kbd> or load a file to begin inspection.
+                </div>
               </div>
             )}
 
@@ -1082,7 +1089,7 @@ export default function VibeWidget({ rawArticleHtml }: { rawArticleHtml: string 
                             </span>
                           )}
                           {issue.applied && (
-                            <span className="tag-badge" style={{ background: '#ecfdf5', color: '#059669', borderColor: '#a7f3d0' }}>
+                            <span className="tag-badge tag-fixed">
                               FIXED
                             </span>
                           )}
@@ -1147,7 +1154,8 @@ export default function VibeWidget({ rawArticleHtml }: { rawArticleHtml: string 
             {/* Filter Empty State */}
             {hasScanned && !isLoading && issues.length > 0 && filteredIssues.length === 0 && (
               <div className="empty-state">
-                <div className="empty-title">No {activeFilter.toLowerCase()} issues</div>
+                <div className="empty-headline">No {activeFilter.toLowerCase()} issues</div>
+                <div className="empty-body">No issues match the selected severity filter.</div>
               </div>
             )}
           </div>
@@ -1192,12 +1200,14 @@ export default function VibeWidget({ rawArticleHtml }: { rawArticleHtml: string 
             </div>
           ) : historyLogs.length === 0 ? (
             <div className="history-empty-view">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-              </svg>
-              <div className="history-empty-title">No audit history yet</div>
-              <div className="history-empty-subtitle">Audited reviews will automatically save to your MongoDB Atlas database.</div>
+              <div className="empty-illustration small">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+              </div>
+              <div className="history-empty-title">No Previous Audits</div>
+              <div className="history-empty-subtitle">Every review snapshot, vulnerability report, and auto-fix is securely archived to your database.</div>
             </div>
           ) : (
             historyLogs.map((log) => {
