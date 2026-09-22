@@ -48,9 +48,15 @@ function App() {
   const samplePresets = [
     {
       id: 'python',
-      label: '🐍 Python (FastAPI)',
+      label: 'Python (FastAPI)',
       sub: 'Command injection & pickle deserialization',
       fileName: 'service.py',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path d="M11.9 2c-5.1 0-4.8 2.2-4.8 2.2l.01 2.3h4.9v.7H5.2S2 6.8 2 12c0 5.1 2.8 5 2.8 5h1.7v-2.4s-.1-2.8 2.8-2.8h4.8s2.7.05 2.7-2.6V4.7S17.1 2 11.9 2zM9.3 3.6a.9.9 0 1 1 0 1.8.9.9 0 0 1 0-1.8z" fill="#387eb8"/>
+          <path d="M12.1 22c5.1 0 4.8-2.2 4.8-2.2l-.01-2.3h-4.9v-.7h6.8s3.2.4 3.2-4.8c0-5.1-2.8-5-2.8-5h-1.7v2.4s.1 2.8-2.8 2.8H9.9s-2.7-.05-2.7 2.6v4.5s-.3 2.7 4.9 2.7zm2.6-1.6a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8z" fill="#f59e0b"/>
+        </svg>
+      ),
       code: `import os
 import pickle
 from fastapi import FastAPI
@@ -82,9 +88,16 @@ def fetch_telemetry():
     },
     {
       id: 'c_cpp',
-      label: '⚙️ C / C++ (Memory)',
+      label: 'C / C++ (Memory)',
       sub: 'Buffer overflow & unsafe memory copying',
       fileName: 'packet_parser.c',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2L3 7.2v9.6L12 22l9-5.2V7.2L12 2z" fill="#00599c"/>
+          <path d="M10.5 15.5a3.5 3.5 0 1 1 0-7" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round"/>
+          <path d="M14 12h3M15.5 10.5v3M18.5 12h3M20 10.5v3" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round"/>
+        </svg>
+      ),
       code: `#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -109,9 +122,16 @@ int main() {
     },
     {
       id: 'csharp',
-      label: '🔷 C# (.NET)',
+      label: 'C# (.NET)',
       sub: 'BinaryFormatter RCE & raw SQL query',
       fileName: 'PaymentWorker.cs',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2L3 7.2v9.6L12 22l9-5.2V7.2L12 2z" fill="#68217a"/>
+          <path d="M10.2 15.5a3.5 3.5 0 1 1 0-7" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round"/>
+          <path d="M15 10v4M17.5 10v4M14 11.2h4.5M14 12.8h4.5" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round"/>
+        </svg>
+      ),
       code: `using System;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
@@ -137,9 +157,17 @@ public class PaymentWorker {
     },
     {
       id: 'java',
-      label: '☕ Java (Spring)',
+      label: 'Java (Spring)',
       sub: 'SQL injection & silent exception suppression',
       fileName: 'OrderController.java',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path d="M4 10h12v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-6z" fill="#ea580c"/>
+          <path d="M16 11h2a2.5 2.5 0 0 1 0 5h-2" stroke="#ea580c" strokeWidth="2" strokeLinecap="round"/>
+          <path d="M3 21h14" stroke="#c2410c" strokeWidth="2" strokeLinecap="round"/>
+          <path d="M7 4c1 1.5-.5 2.5 .8 4M11 3c1 1.5-.5 2.5 .8 4M15 4c1 1.5-.5 2.5 .8 4" stroke="#0284c7" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      ),
       code: `import java.sql.Connection;
 import java.sql.Statement;
 
@@ -164,10 +192,17 @@ public class OrderController {
     },
     {
       id: 'react_ts',
-      label: '⚛️ React / TypeScript',
+      label: 'React / TypeScript',
       sub: 'Vibe-coded XSS & exposed API key',
       fileName: 'VibeWidget.tsx',
-      code: `import React from 'react';
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="2.8" fill="#0284c7"/>
+          <ellipse cx="12" cy="12" rx="10.5" ry="4.5" stroke="#0284c7" strokeWidth="2"/>
+          <ellipse cx="12" cy="12" rx="10.5" ry="4.5" stroke="#0284c7" strokeWidth="2" transform="rotate(60 12 12)"/>
+          <ellipse cx="12" cy="12" rx="10.5" ry="4.5" stroke="#0284c7" strokeWidth="2" transform="rotate(120 12 12)"/>
+        </svg>
+      ),code: `import React from 'react';
 
 export default function VibeWidget({ rawArticleHtml }: { rawArticleHtml: string }) {
   // Critical Vibe-Coded Anti-Pattern: Private secret exposed in client code
@@ -594,7 +629,7 @@ export default function VibeWidget({ rawArticleHtml }: { rawArticleHtml: string 
       {/* Top Application Bar */}
       <header className="workbench-header">
         <div className="header-left">
-          <span className="app-title">vibecheck</span>
+          <span className="app-title">ReviewForge</span>
         </div>
 
         <div className="header-right">
@@ -791,7 +826,10 @@ export default function VibeWidget({ rawArticleHtml }: { rawArticleHtml: string 
                         className="sample-item-btn"
                         onClick={() => handleSelectSample(preset)}
                       >
-                        <div className="sample-item-title">{preset.label}</div>
+                        <div className="sample-item-header">
+                          <span className="sample-item-icon">{preset.icon}</span>
+                          <span className="sample-item-title">{preset.label}</span>
+                        </div>
                         <div className="sample-item-desc">{preset.sub}</div>
                       </button>
                     ))}
