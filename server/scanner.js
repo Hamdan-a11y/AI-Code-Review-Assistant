@@ -14,8 +14,8 @@ export function scanCode(code, fileName = '') {
     // 1. Universal: Hardcoded API Secrets, Tokens & Private Keys
     // =========================================================
     const secretPattern = /(api[_-]?key|secret|token|password|auth|jwt|private[_-]?key)\s*[:=]\s*['"`][A-Za-z0-9_\-]{8,}['"`]/i;
-    const cloudKeyPattern = /(sk_live_[0-9a-zA-Z]{24,}|AKIA[0-9A-Z]{16}|ghp_[0-9a-zA-Z]{36}|AIza[0-9A-Za-z-_]{35})/;
-    if (cloudKeyPattern.test(lineText) || secretPattern.test(lineText)) {
+    const isEnvLoading = /process\.env|os\.(getenv|environ)|System\.getenv|Environment\.GetEnvironmentVariable|ConfigurationManager/i.test(lineText);
+    if (!isEnvLoading && (cloudKeyPattern.test(lineText) || secretPattern.test(lineText))) {
       issues.push({
         type: 'Hardcoded Secret / Token',
         category: 'Security Loophole',
@@ -30,7 +30,7 @@ export function scanCode(code, fileName = '') {
     // =========================================================
     // 2. C / C++: Dangerous Memory & Buffer Functions (CWE-120)
     // =========================================================
-    if (/\b(strcpy|strcat|gets|sprintf)\s*\(/.test(lineText)) {
+    if (/\b(strcpy|strcat|gets|sprintf)\s*\(/.test(lineText) && !/\b(strncpy|snprintf|fgets)\b/.test(lineText)) {
       const match = lineText.match(/\b(strcpy|strcat|gets|sprintf)\b/)?.[0] || 'strcpy';
       issues.push({
         type: 'Buffer Overflow Risk (CWE-120)',
@@ -124,7 +124,7 @@ export function scanCode(code, fileName = '') {
       });
     }
 
-    if (/dangerouslySetInnerHTML\s*=/.test(lineText) || /\.innerHTML\s*=/.test(lineText)) {
+    if ((/dangerouslySetInnerHTML\s*=/.test(lineText) || /\.innerHTML\s*=/.test(lineText)) && !lineText.includes('DOMPurify')) {
       issues.push({
         type: 'Cross-Site Scripting (XSS)',
         category: 'Security Loophole',

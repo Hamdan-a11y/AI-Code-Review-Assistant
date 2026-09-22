@@ -60,27 +60,31 @@ app.post('/api/scan', async (req, res) => {
 
     // 4. Run strict Gemini AI review first with multi-language awareness
     const detectedLanguage = detectLanguage(fileName, code);
-    let aiIssues = [];
+    let aiResult = null;
     try {
-      aiIssues = await reviewCodeWithAI(code, fileName);
+      aiResult = await reviewCodeWithAI(code, fileName);
     } catch (aiErr) {
       console.error('AI Review failure:', aiErr);
-      aiIssues = [];
+      aiResult = null;
     }
 
     let finalIssues = [];
+    let engineUsed = 'Static Regex Fallback';
 
-    if (aiIssues && aiIssues.length > 0) {
-      // Primary engine: Use strict AI results
-      finalIssues = aiIssues;
+    if (aiResult !== null && Array.isArray(aiResult.issues)) {
+      // Primary engine: Use strict AI results (even when 0 issues found — clean code!)
+      finalIssues = aiResult.issues;
+      engineUsed = aiResult.modelUsed || 'Gemini AI';
     } else {
-      // Offline fallback: Use static regex scanner if AI is unavailable
+      // Offline fallback: Use static regex scanner ONLY if AI call completely failed
+      console.log('Falling back to static regex scanner...');
       finalIssues = scanCode(code, fileName);
+      engineUsed = 'Static Regex Fallback';
     }
 
     const stats = {
       total: finalIssues.length,
-      engine: aiIssues.length > 0 ? 'Gemini AI' : 'Static Regex Fallback',
+      engine: engineUsed,
       language: detectedLanguage
     };
 
