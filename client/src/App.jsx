@@ -1088,11 +1088,6 @@ export default function VibeWidget({ rawArticleHtml }: { rawArticleHtml: string 
                               {issue.category}
                             </span>
                           )}
-                          {issue.applied && (
-                            <span className="tag-badge tag-fixed">
-                              FIXED
-                            </span>
-                          )}
                         </div>
                       </div>
 
